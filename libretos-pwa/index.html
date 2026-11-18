@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#05080D">
+<title>Libretos</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: biblioteca en una columna; lector a pantalla completa con línea guía fija y controles que se ocultan */
+:root{
+  --negro:#05080D; --bg:#0B1320; --panel:#121D2E; --line:#22324A;
+  --fg:#F3F6FA; --muted:#8A9BB2; --dim:#46566E;
+  --azul:#42A5F5; --azul-osc:#0D2C54; --azul-mc:#BBDEFB; --naranja:#FF9A3C; --rojo:#EF5350;
+  --leer:"Atkinson Hyperlegible",system-ui,sans-serif; --ui:"Inter",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--ui);-webkit-tap-highlight-color:transparent}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* ---------- Biblioteca ---------- */
+#vBib{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:18px;
+  padding:calc(22px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(28px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.cab h1{font:600 26px/1.1 var(--ui);margin:0;letter-spacing:-.01em}
+.cab p{margin:6px 0 0;color:var(--muted);max-width:34em}
+.acciones{display:flex;gap:8px;flex-wrap:wrap}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:500;position:relative;overflow:hidden}
+.btn.pri{background:var(--azul);color:#04172B;border-color:var(--azul);font-weight:600}
+.btn.peligro{color:var(--rojo);border-color:#5a2a2e}
+.btn.chico{padding:6px 10px;font-size:13px;border-radius:8px}
+.btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.caja{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.caja textarea,.caja input[type=url]{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%}
+.caja textarea{min-height:180px;font:14px/1.5 ui-monospace,monospace}
+.fila{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fila.der{justify-content:flex-end}
+.etq{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:start}
+.item .abrir{all:unset;cursor:pointer;min-width:0;display:flex;flex-direction:column;gap:3px}
+.item .abrir:focus-visible{outline:2px solid var(--azul);outline-offset:4px;border-radius:4px}
+.item .t{font-weight:600;font-size:16px;overflow-wrap:anywhere}
+.item .s{color:var(--muted);font-size:13px}
+.item .m{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.item .ops{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.prog{grid-column:1/-1;height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--azul)}
+.ej{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--naranja);border:1px solid #6b4520;border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:2px}
+.ayuda{color:var(--muted);font-size:13px;line-height:1.55;border-top:1px solid var(--line);padding-top:14px}
+.ayuda b{color:var(--fg);font-weight:600}
+.ayuda code{font-size:12px;background:var(--panel);padding:1px 5px;border-radius:4px}
+
+/* ---------- Lector ---------- */
+#vLec{position:fixed;inset:0;background:var(--negro);overflow:hidden}
+#scroller{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;touch-action:pan-y}
+#scroller::-webkit-scrollbar{display:none}
+#scroller.espejo{transform:scaleX(-1)}
+#texto{position:relative;font-family:var(--leer);font-size:var(--tam,44px);line-height:1.5;max-width:28em;margin:0 auto;
+  padding:30vh max(5vw,env(safe-area-inset-right,0px)) 75vh max(5vw,env(safe-area-inset-left,0px));color:var(--fg);user-select:none;-webkit-user-select:none}
+#texto p{margin:0 0 .8em}
+.w{border-radius:.1em;transition:color .3s}
+.w.b{color:var(--naranja);font-weight:700}
+.w.it{font-style:italic}
+.w.leida{color:var(--dim)}
+.w.b.leida{color:#6F4A28}
+.w.actual{background:rgba(66,165,245,.18);box-shadow:0 .1em 0 var(--azul)}
+.pz{color:var(--azul);font-weight:400;opacity:.9;letter-spacing:-.05em}
+.pz.leida{opacity:.3}
+.esc{display:flex;align-items:center;gap:.6em;margin:1.3em 0 .5em;font:600 max(13px,.36em)/1 var(--ui);letter-spacing:.12em;color:var(--azul-mc)}
+.esc span{background:var(--azul-osc);padding:.45em .8em;border-radius:99px}
+.esc::after{content:"";flex:1;height:1px;background:var(--line)}
+.bloque{font:600 max(13px,.4em)/1.3 var(--ui);color:var(--muted);text-transform:uppercase;letter-spacing:.14em;margin:2.2em 0 .3em}
+.bloque:first-child{margin-top:0}
+.nota{font:italic max(13px,.42em)/1.45 var(--ui);color:var(--muted);margin:0 0 .9em;border-left:2px solid var(--line);padding-left:.8em}
+#texto.sin-notas .nota{display:none}
+.guia{position:absolute;left:0;right:0;top:var(--guia,30%);height:0;border-top:1px dashed rgba(66,165,245,.4);pointer-events:none}
+.guia::before{content:"";position:absolute;left:max(4px,env(safe-area-inset-left,0px));top:-9px;border:9px solid transparent;border-left:12px solid var(--azul)}
+#silencio{position:absolute;left:50%;top:calc(var(--guia,30%) - 58px);transform:translateX(-50%);display:flex;align-items:center;gap:8px;
+  background:rgba(13,44,84,.92);color:var(--azul-mc);font:600 13px var(--ui);letter-spacing:.08em;padding:7px 14px;border-radius:99px;pointer-events:none}
+#silencio i{width:9px;height:9px;border-radius:50%;background:var(--naranja);animation:latido 1s ease-in-out infinite}
+@keyframes latido{50%{opacity:.25}}
+#cuenta{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 32vmin var(--leer);color:var(--azul);pointer-events:none;background:rgba(5,8,13,.6)}
+
+.sup{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;
+  padding:calc(8px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 24px max(12px,env(safe-area-inset-left,0px));
+  background:linear-gradient(var(--negro) 55%,transparent);transition:opacity .4s}
+.sup .tit{flex:1;min-width:0;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{font:600 12px var(--ui);font-variant-numeric:tabular-nums;background:var(--azul-osc);color:var(--azul-mc);padding:5px 10px;border-radius:99px;white-space:nowrap;border:0;cursor:pointer}
+.reloj{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.inf{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:10px;align-items:center;
+  padding:28px max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));
+  background:linear-gradient(transparent,var(--negro) 45%);transition:opacity .4s}
+.oculto{opacity:0;pointer-events:none}
+.modos{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px}
+.modos button{background:none;border:0;border-radius:99px;padding:6px 14px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer}
+.modos button[aria-pressed=true]{background:var(--azul-osc);color:var(--azul-mc)}
+.modos button:disabled{opacity:.35;cursor:not-allowed}
+.ctrls{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.r{background:rgba(18,29,46,.95);border:1px solid var(--line);border-radius:99px;min-width:44px;height:44px;padding:0 14px;cursor:pointer;font-size:15px;font-variant-numeric:tabular-nums}
+.r.pri{background:var(--azul);color:#04172B;border-color:var(--azul);font-weight:600;min-width:9.5em}
+.r.pri.escuchando{background:var(--naranja);border-color:var(--naranja);color:#2a1400}
+.vel{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.hoja{position:absolute;left:0;right:0;bottom:0;max-height:78%;overflow:auto;background:var(--panel);border-top:1px solid var(--line);border-radius:16px 16px 0 0;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px;z-index:5}
+.hoja h2{margin:0;font-size:16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ajustes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+label.campo{display:flex;flex-direction:column;gap:6px}
+label.campo .etq{display:flex;justify-content:space-between}
+label.campo output{color:var(--fg);letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums;font-weight:500}
+input[type=range]{accent-color:var(--azul);width:100%}
+.check{display:flex;gap:10px;align-items:center;font-size:14px;cursor:pointer}
+.check input{accent-color:var(--azul);width:18px;height:18px}
+.escenas{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.escenas li button{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:grid;grid-template-columns:3.4em 1fr auto;gap:10px;align-items:baseline;padding:9px 6px;border-bottom:1px solid var(--line)}
+.escenas li button:focus-visible{outline:2px solid var(--azul)}
+.escenas li.blq{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:14px 6px 4px}
+.escenas .id{font-weight:600;color:var(--azul-mc);font-variant-numeric:tabular-nums}
+.escenas .tx{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.escenas .du{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.escenas .du b{color:var(--naranja);font-weight:600}
+.escenas li.aqui .id{color:var(--naranja)}
+#toast{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1d2b42;color:var(--fg);border:1px solid var(--line);
+  padding:10px 16px;border-radius:10px;font-size:14px;max-width:min(92vw,480px);text-align:center;z-index:20;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+@media (prefers-reduced-motion:reduce){.w,.sup,.inf{transition:none}#silencio i{animation:none}}
+</style>
+</head>
+<body>
+
+<!-- ================= BIBLIOTECA ================= -->
+<main id="vBib">
+  <header class="cab">
+    <h1>Libretos</h1>
+    <p>Abra un libreto en Markdown y léalo en el teléfono. En modo voz el texto avanza a medida que usted lo lee en voz alta.</p>
+  </header>
+  <div class="acciones">
+    <label class="btn pri">Abrir archivo .md<input type="file" id="fArchivo" multiple></label>
+    <button class="btn" id="bPegar" type="button">Pegar texto</button>
+    <button class="btn" id="bEnlace" type="button">Desde enlace</button>
+  </div>
+
+  <section class="caja" id="cPegar" hidden>
+    <span class="etq">Pegar libreto</span>
+    <textarea id="tPegar" placeholder="# LIBRETO: …&#10;&#10;## BLOQUE 1: …&#10;&#10;**[E01]**&#10;*En pantalla: …*&#10;&#10;Texto para leer / con pausas //"></textarea>
+    <div class="fila der"><button class="btn" type="button" data-cerrar="cPegar">Cancelar</button><button class="btn pri" id="bGuardarPegado" type="button">Guardar libreto</button></div>
+  </section>
+
+  <section class="caja" id="cEnlace" hidden>
+    <span class="etq">Abrir desde un enlace</span>
+    <input type="url" id="tEnlace" placeholder="https://github.com/usuario/repo/blob/main/guiones/tema3-libreto.md" autocomplete="off">
+    <span class="s" style="color:var(--muted);font-size:13px">Sirve con enlaces de GitHub o de GitHub Pages. Los de Google Drive no se pueden leer así: descargue el archivo y use «Abrir archivo .md».</span>
+    <div class="fila der"><button class="btn" type="button" data-cerrar="cEnlace">Cancelar</button><button class="btn pri" id="bTraer" type="button">Abrir</button></div>
+  </section>
+
+  <section>
+    <ul class="lista" id="lista"></ul>
+  </section>
+
+  <section class="ayuda">
+    <b>Cómo lee el libreto.</b> Cada <code>**[E07]**</code> se muestra como inicio de escena; <code>/</code> y <code>//</code> aparecen como pausas en azul; la <b style="color:var(--naranja)">negrita</b> sale en naranja; las líneas <code>*En pantalla: …*</code> se muestran pequeñas y se pueden ocultar. La tabla «Cómo leer este libreto» se omite.<br><br>
+    <b>Modo voz</b>: siga leyendo y el texto se mueve solo; si repite una frase para corregir la toma, el lector vuelve con usted. Necesita internet y permiso de micrófono. <b>Modo automático</b>: avanza a un ritmo fijo, con 1 s de silencio al inicio de cada escena. Toque una palabra para continuar desde ahí.
+  </section>
+</main>
+
+<!-- ================= LECTOR ================= -->
+<div id="vLec" hidden>
+  <div id="scroller"><div id="texto"></div></div>
+  <div class="guia"></div>
+  <div id="silencio" hidden><i></i>SILENCIO 1 s</div>
+  <div id="cuenta" hidden></div>
+
+  <div class="sup" id="sup">
+    <button class="r" id="bVolver" type="button" aria-label="Volver a la biblioteca">←</button>
+    <div class="tit" id="lTitulo"></div>
+    <span class="reloj" id="lReloj">0:00</span>
+    <button class="chip" id="lEscena" type="button">E01</button>
+  </div>
+
+  <div class="inf" id="inf">
+    <div class="modos" role="group" aria-label="Modo de avance">
+      <button type="button" id="mVoz" aria-pressed="true">Voz</button>
+      <button type="button" id="mAuto" aria-pressed="false">Automático</button>
+    </div>
+    <div class="ctrls">
+      <button class="r" id="bAnt" type="button" aria-label="Escena anterior">⏮</button>
+      <button class="r" id="bMenos" type="button" aria-label="Más lento">−</button>
+      <button class="r pri" id="bPlay" type="button">Escuchar</button>
+      <button class="r" id="bMas" type="button" aria-label="Más rápido">+</button>
+      <button class="r" id="bSig" type="button" aria-label="Escena siguiente">⏭</button>
+      <button class="r" id="bAjustes" type="button" aria-label="Ajustes">⚙</button>
+    </div>
+    <div class="vel" id="lVel"></div>
+  </div>
+
+  <section class="hoja" id="hAjustes" hidden>
+    <h2>Ajustes de lectura <button class="btn chico" type="button" data-cerrar="hAjustes">Listo</button></h2>
+    <div class="ajustes">
+      <label class="campo"><span class="etq">Tamaño de letra <output id="oTam"></output></span><input type="range" id="aTam" min="22" max="96" step="2"></label>
+      <label class="campo"><span class="etq">Ritmo automático <output id="oPpm"></output></span><input type="range" id="aPpm" min="80" max="200" step="2"></label>
+      <label class="campo"><span class="etq">Línea guía <output id="oGuia"></output></span><input type="range" id="aGuia" min="15" max="55" step="1"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="aNotas"> Mostrar las notas «En pantalla»</label>
+    <label class="check"><input type="checkbox" id="aConteo"> Cuenta regresiva de 3 s al empezar</label>
+    <label class="check"><input type="checkbox" id="aEspejo"> Texto en espejo (para vidrio reflector)</label>
+    <p class="s" style="color:var(--muted);font-size:13px;margin:0">Teclado o control Bluetooth: espacio inicia o pausa · ← → cambian de escena · ↑ ↓ mueven unas palabras · + − cambian el ritmo · Esc vuelve.</p>
+  </section>
+
+  <section class="hoja" id="hEscenas" hidden>
+    <h2>Escenas <span class="fila"><button class="btn chico" id="bCopiarDur" type="button">Copiar duraciones.json</button><button class="btn chico" type="button" data-cerrar="hEscenas">Cerrar</button></span></h2>
+    <p class="s" style="color:var(--muted);font-size:13px;margin:0">«~» es lo estimado para el libreto. En <b style="color:var(--naranja)">naranja</b>, lo que tardó en leer cada escena seguida en esta sesión.</p>
+    <ul class="escenas" id="lEscenas"></ul>
+  </section>
+</div>
+
+<div id="toast" hidden></div>
+
+<script>
+'use strict';
+/* =================== Utilidades =================== */
+const $=id=>document.getElementById(id);
+const leer=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};
+const guardar=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function mmss(s){s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+function durTxt(s){s=Math.round(s);return s<60?s+' s':Math.floor(s/60)+' min'+(s%60?' '+s%60+' s':'')}
+let tToast=0;function toast(m,ms=3200){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tToast);tToast=setTimeout(()=>t.hidden=true,ms)}
+
+/* =================== Normalización de palabras =================== */
+const NUM={0:'cero',1:'uno',2:'dos',3:'tres',4:'cuatro',5:'cinco',6:'seis',7:'siete',8:'ocho',9:'nueve',10:'diez',11:'once',12:'doce',13:'trece',14:'catorce',15:'quince',16:'dieciseis',17:'diecisiete',18:'dieciocho',19:'diecinueve',20:'veinte',21:'veintiuno',22:'veintidos',23:'veintitres',24:'veinticuatro',25:'veinticinco',26:'veintiseis',27:'veintisiete',28:'veintiocho',29:'veintinueve',30:'treinta',40:'cuarenta',50:'cincuenta',60:'sesenta',70:'setenta',80:'ochenta',90:'noventa',100:'cien',1000:'mil'};
+function norm(s){
+  s=s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');
+  if(/^\d+$/.test(s)&&NUM[+s])return NUM[+s];
+  if(s==='un'||s==='una')return 'uno';
+  return s;
+}
+
+/* =================== Lectura del Markdown del libreto =================== */
+function tokens(txt){
+  const out=[];let b=false,it=false,espacio=true;
+  const partes=txt.replace(/`/g,'').split(/(\*\*|__|\/\/|\/|\*)/);
+  for(const p of partes){
+    if(p==='**'||p==='__'){b=!b;continue}
+    if(p==='*'){it=!it;continue}
+    if(p==='//'||p==='/'){out.push({t:'p',k:p.length});espacio=true;continue}
+    for(const s of p.split(/(\s+)/)){
+      if(!s)continue;
+      if(/^\s+$/.test(s)){espacio=true;continue}
+      out.push({t:'w',raw:s,n:norm(s),b,it,esp:espacio});espacio=false;
+    }
+  }
+  return out;
+}
+function limpiar(s){return s.replace(/\*\*|__|`/g,'').replace(/^\*|\*$/g,'').trim()}
+
+function parsear(md){
+  const L=md.replace(/\r/g,'').split('\n');
+  let titulo='',sub='';
+  const iTit=L.findIndex(l=>/^#\s+\S/.test(l));
+  if(iTit>=0)titulo=limpiar(L[iTit].replace(/^#\s+/,'')).replace(/^LIBRETO\s*:\s*/i,'');
+  let ini=L.findIndex(l=>/^##\s+BLOQUE/i.test(l));
+  for(let i=Math.max(0,iTit+1);i<(ini<0?Math.min(L.length,iTit+6):ini);i++){
+    const m=L[i].trim().match(/^\*\*([^\[].*)\*\*$/);if(m){sub=limpiar(m[1]);break}
+  }
+  if(ini<0)ini=iTit>=0?iTit+1:0;
+  const items=[];let buf=[];
+  const vaciar=()=>{if(buf.length){const tk=tokens(buf.join(' '));if(tk.length)items.push({t:'par',tk});buf=[]}};
+  for(let i=ini;i<L.length;i++){
+    let t=L[i].trim();
+    if(!t){vaciar();continue}
+    if(/^(-{3,}|\*{3,}|_{3,})$/.test(t)){vaciar();continue}
+    let m=t.match(/^#{1,6}\s+(.*)$/);
+    if(m){vaciar();items.push({t:'blq',x:limpiar(m[1])});continue}
+    if(/^\|/.test(t)){vaciar();continue}
+    m=t.match(/^(?:\*\*|__)?\[(E\d+[a-z]?)\](?:\*\*|__)?\s*(.*)$/i);
+    if(m){vaciar();items.push({t:'esc',id:m[1].toUpperCase()});t=m[2].trim();if(!t)continue}
+    m=t.match(/^[*_]\s*En pantalla\s*:?\s*(.*?)\s*[*_]?$/i);
+    if(m){vaciar();items.push({t:'nota',x:limpiar(m[1])});continue}
+    t=t.replace(/^>\s?/,'').replace(/^[-+]\s+/,'').replace(/^\*\s+/,'').replace(/^\d+[.)]\s+/,'');
+    buf.push(t);
+  }
+  vaciar();
+  if(!titulo)titulo='Libreto sin título';
+  return {titulo,sub,items};
+}
+
+/* Estima como el flujo de los videos: 2,1 palabras/s, // = 1 s, / = 0,3 s, +1,5 s por escena */
+function escenasDe(modelo){
+  const E=[];let cur=null,blq='',n=0;
+  const nueva=(id)=>{cur={id,blq,w:0,sp:0,lp:0,i0:n,frase:''};E.push(cur)};
+  for(const it of modelo.items){
+    if(it.t==='blq'){blq=it.x;continue}
+    if(it.t==='esc'){nueva(it.id);continue}
+    if(it.t!=='par')continue;
+    if(!cur)nueva(E.length?'—':'Inicio');
+    for(const k of it.tk){
+      if(k.t==='p'){k.k===2?cur.lp++:cur.sp++;continue}
+      n++;if(k.n)cur.w++;
+      if(cur.frase.length<70)cur.frase+=(cur.frase?' ':'')+k.raw;
+    }
+  }
+  E.forEach((e,i)=>{e.i1=i+1<E.length?E[i+1].i0:n;e.est=e.w/2.1+e.lp+e.sp*.3+1.5});
+  return E.filter(e=>e.i1>e.i0||/^E/.test(e.id));
+}
+
+/* =================== Biblioteca =================== */
+let BIB=leer('libretos_v1',null);
+const EJEMPLO=`# LIBRETO: De las coordenadas cartesianas a las polares (ejemplo)
+**Cálculo Multivariado · Libreto de ejemplo · Prof. Héctor Escamilla**
+
+## Cómo leer este libreto
+| Marca | Significado |
+|---|---|
+| **[E07]** | Inicio de escena. Deja 1 segundo de silencio antes de empezar. |
+
+## BLOQUE 1: El reto pendiente
+
+**[E01]**
+*En pantalla: el punto (3, 4) en el plano cartesiano.*
+
+En el video anterior te dejé un reto. / Describir el punto **tres, cuatro** usando solo una distancia / y un ángulo. //
+
+¿Lo intentaste? / Hoy vamos a resolverlo juntos.
+
+**[E02]**
+*En pantalla: segmento del origen al punto, con su longitud.*
+
+Empecemos por la distancia. / Desde el origen hasta el punto hay un triángulo rectángulo / de catetos tres y cuatro. //
+
+Por el teorema de Pitágoras, / la distancia es la raíz de tres al cuadrado más cuatro al cuadrado, / es decir, **cinco**. //
+
+## BLOQUE 2: El ángulo
+
+**[E03]**
+*En pantalla: arco del ángulo θ desde el eje x.*
+
+Ahora el ángulo. / Lo medimos desde el eje **x** positivo, / en sentido contrario a las manecillas del reloj. //
+
+Su tangente es cuatro sobre tres, / así que el ángulo es el arco tangente de cuatro tercios, / un poco más de cincuenta y tres grados. //
+
+Con esos dos datos, / distancia y ángulo, / ya tenemos las **coordenadas polares** del punto.`;
+if(!Array.isArray(BIB)){BIB=[{id:'ejemplo',ejemplo:true,nombre:'ejemplo-libreto.md',texto:EJEMPLO,pos:0,act:Date.now()}];guardar('libretos_v1',BIB)}
+function guardarBib(){if(!guardar('libretos_v1',BIB))toast('No se pudo guardar en este teléfono; el libreto queda abierto solo mientras no cierre la app.')}
+
+function agregar(nombre,texto){
+  const m=parsear(texto);
+  const prev=BIB.find(x=>x.nombre===nombre&&!x.ejemplo);
+  if(prev){prev.texto=texto;prev.act=Date.now();if(prev.pos>contarPalabras(m))prev.pos=0}
+  else BIB.unshift({id:'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),nombre,texto,pos:0,act:Date.now()});
+  guardarBib();pintarBib();
+  return prev||BIB[0];
+}
+function contarPalabras(m){let n=0;m.items.forEach(it=>{if(it.t==='par')it.tk.forEach(k=>{if(k.t==='w')n++})});return n}
+
+let borrando=null;
+function pintarBib(){
+  const ul=$('lista');ul.innerHTML='';
+  if(!BIB.length){ul.innerHTML='<li class="item" style="display:block;color:var(--muted)">Aún no hay libretos. Use «Abrir archivo .md» para cargar el primero.</li>';return}
+  BIB.slice().sort((a,b)=>b.act-a.act).forEach(l=>{
+    const m=parsear(l.texto),E=escenasDe(m),tot=contarPalabras(m),est=E.reduce((s,e)=>s+e.est,0);
+    const nE=E.filter(e=>/^E/.test(e.id)).length;
+    const li=document.createElement('li');li.className='item';
+    li.innerHTML=`<button class="abrir" type="button"><span class="t">${esc(m.titulo)}${l.ejemplo?'<span class="ej">EJEMPLO</span>':''}</span>${m.sub?`<span class="s">${esc(m.sub)}</span>`:''}<span class="m">${nE?nE+' escenas · ':''}~${durTxt(est)} · ${tot} palabras${l.pos?` · va en ${Math.round(l.pos/Math.max(1,tot)*100)} %`:''}</span></button><div class="ops"></div><div class="prog"><i style="width:${tot?Math.min(100,l.pos/tot*100):0}%"></i></div>`;
+    li.querySelector('.abrir').onclick=()=>abrir(l);
+    const ops=li.querySelector('.ops');
+    if(borrando===l.id){
+      ops.innerHTML='<button class="btn chico" type="button">No</button><button class="btn chico peligro" type="button">Sí, quitar</button>';
+      ops.children[0].onclick=()=>{borrando=null;pintarBib()};
+      ops.children[1].onclick=()=>{BIB=BIB.filter(x=>x!==l);borrando=null;guardarBib();pintarBib()};
+    }else{
+      ops.innerHTML='<button class="btn chico" type="button" aria-label="Quitar libreto">Quitar</button>';
+      ops.children[0].onclick=()=>{borrando=l.id;pintarBib()};
+    }
+    ul.appendChild(li);
+  });
+}
+
+$('fArchivo').addEventListener('change',async e=>{
+  const fs=[...e.target.files];e.target.value='';let ult=null;
+  for(const f of fs){try{ult=agregar(f.name,await f.text())}catch(err){toast('No se pudo leer '+f.name)}}
+  if(fs.length===1&&ult)abrir(ult);else if(fs.length)toast(fs.length+' libretos cargados.');
+});
+document.querySelectorAll('[data-cerrar]').forEach(b=>b.onclick=()=>{$(b.dataset.cerrar).hidden=true;if(b.dataset.cerrar.startsWith('h'))refrescarOffsets()});
+$('bPegar').onclick=()=>{$('cEnlace').hidden=true;$('cPegar').hidden=false;$('tPegar').focus()};
+$('bEnlace').onclick=()=>{$('cPegar').hidden=true;$('cEnlace').hidden=false;$('tEnlace').focus()};
+$('bGuardarPegado').onclick=()=>{const t=$('tPegar').value.trim();if(!t){toast('Pegue primero el texto del libreto.');return}
+  const m=parsear(t);const l=agregar(m.titulo.replace(/[^\wáéíóúñ -]/gi,'').slice(0,60)+'.md',t);$('tPegar').value='';$('cPegar').hidden=true;abrir(l)};
+$('bTraer').onclick=async()=>{
+  let u=$('tEnlace').value.trim();if(!u){toast('Escriba el enlace del archivo.');return}
+  const g=u.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);if(g)u=`https://raw.githubusercontent.com/${g[1]}/${g[2]}/${g[3]}`;
+  try{const r=await fetch(u);if(!r.ok)throw new Error(r.status);const t=await r.text();
+    const l=agregar(decodeURIComponent(u.split('/').pop()||'libreto.md'),t);$('cEnlace').hidden=true;$('tEnlace').value='';abrir(l)}
+  catch(err){toast('No se pudo abrir ese enlace. Verifique que el archivo sea público, o descárguelo y use «Abrir archivo .md».',5000)}
+};
+
+/* =================== Ajustes =================== */
+const CFG=Object.assign({tam:38,ppm:126,guia:30,notas:true,conteo:true,espejo:false,modo:'voz'},leer('cfg_libretos',{}));
+function guardarCfg(){guardar('cfg_libretos',CFG)}
+const HAY_VOZ=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+if(!HAY_VOZ&&CFG.modo==='voz')CFG.modo='auto';
+function aplicarCfg(){
+  $('texto').style.setProperty('--tam',CFG.tam+'px');
+  $('vLec').style.setProperty('--guia',CFG.guia+'%');
+  $('texto').classList.toggle('sin-notas',!CFG.notas);
+  $('scroller').classList.toggle('espejo',CFG.espejo);
+  $('oTam').textContent=CFG.tam+' px';$('oPpm').textContent=CFG.ppm+' palabras/min';$('oGuia').textContent=CFG.guia+' % desde arriba';
+  $('aTam').value=CFG.tam;$('aPpm').value=CFG.ppm;$('aGuia').value=CFG.guia;
+  $('aNotas').checked=CFG.notas;$('aConteo').checked=CFG.conteo;$('aEspejo').checked=CFG.espejo;
+  $('mVoz').setAttribute('aria-pressed',CFG.modo==='voz');$('mAuto').setAttribute('aria-pressed',CFG.modo==='auto');
+  $('mVoz').disabled=!HAY_VOZ;$('bMenos').hidden=$('bMas').hidden=CFG.modo!=='auto';
+  $('lVel').textContent=CFG.modo==='auto'?CFG.ppm+' palabras por minuto':(HAY_VOZ?'Siguiendo su voz':'');
+  etiquetaPlay();
+}
+$('aTam').oninput=()=>{CFG.tam=+$('aTam').value;guardarCfg();aplicarCfg();refrescarOffsets()};
+$('aPpm').oninput=()=>{CFG.ppm=+$('aPpm').value;guardarCfg();aplicarCfg()};
+$('aGuia').oninput=()=>{CFG.guia=+$('aGuia').value;guardarCfg();aplicarCfg();refrescarOffsets()};
+$('aNotas').onchange=()=>{CFG.notas=$('aNotas').checked;guardarCfg();aplicarCfg();refrescarOffsets()};
+$('aConteo').onchange=()=>{CFG.conteo=$('aConteo').checked;guardarCfg()};
+$('aEspejo').onchange=()=>{CFG.espejo=$('aEspejo').checked;guardarCfg();aplicarCfg()};
+$('mVoz').onclick=()=>cambiarModo('voz');$('mAuto').onclick=()=>cambiarModo('auto');
+function cambiarModo(m){if(CFG.modo===m)return;detener();CFG.modo=m;guardarCfg();aplicarCfg()}
+
+/* =================== Lector =================== */
+let LIB=null,W=[],ESC=[],cursor=0,corriendo=false,reloj=0,ultimoT=0,acum=0,lockPant=null;
+let seguir=true,tocando=false,tSoltar=0,tOcultar=0,medidas={},entrada=null;
+
+function abrir(l){
+  LIB=l;l.act=Date.now();guardarBib();
+  const m=parsear(l.texto);ESC=escenasDe(m);
+  let h='',n=0;W=[];let escActual=-1,ultimo=null;
+  for(const it of m.items){
+    if(it.t==='blq'){h+=`<h3 class="bloque">${esc(it.x)}</h3>`;continue}
+    if(it.t==='esc'){escActual=ESC.findIndex(e=>e.i0===n&&e.id===it.id);h+=`<div class="esc" id="esc-${esc(it.id)}"><span>${esc(it.id)}</span></div>`;continue}
+    if(it.t==='nota'){h+=`<p class="nota">En pantalla: ${esc(it.x)}</p>`;continue}
+    h+='<p>';
+    for(const k of it.tk){
+      if(k.t==='p'){h+=` <span class="pz" data-p="${n}">${k.k===2?'//':'/'}</span>`;if(ultimo)ultimo.desp+=k.k===2?1:.3;continue}
+      const cls='w'+(k.b?' b':'')+(k.it?' it':'');
+      h+=(k.esp?' ':'')+`<span class="${cls}" data-i="${n}">${esc(k.raw)}</span>`;
+      ultimo={n:k.n,len:k.raw.length,desp:0,antes:0,el:null,top:0};W.push(ultimo);n++;
+    }
+    h+='</p>';
+  }
+  ESC.forEach(e=>{if(W[e.i0]&&/^E/.test(e.id))W[e.i0].antes=1.5;e.fin=null});
+  $('texto').innerHTML=h;
+  $('texto').querySelectorAll('.w').forEach(el=>{W[+el.dataset.i].el=el});
+  PZ=[...$('texto').querySelectorAll('.pz')];
+  $('lTitulo').textContent=m.titulo;
+  medidas=l.duraciones||{};entrada=null;reloj=0;
+  cursor=-1;moverA(Math.min(l.pos||0,W.length),true);
+  $('vBib').hidden=true;$('vLec').hidden=false;
+  aplicarCfg();refrescarOffsets();
+  $('scroller').scrollTop=objetivo();
+  pedirLock();mostrarCtrl(true);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{refrescarOffsets();$('scroller').scrollTop=objetivo()});
+  requestAnimationFrame(bucle);
+}
+let PZ=[];
+function volver(){detener();guardarPos();liberarLock();$('vLec').hidden=true;$('hAjustes').hidden=true;$('hEscenas').hidden=true;$('vBib').hidden=false;LIB=null;pintarBib()}
+function guardarPos(){if(LIB){LIB.pos=cursor>=W.length?0:cursor;LIB.duraciones=medidas;guardarBib()}}
+
+function guiaPx(){return $('scroller').clientHeight*CFG.guia/100}
+function refrescarOffsets(){
+  if(!LIB)return;
+  $('texto').style.paddingTop=guiaPx()+'px';
+  for(const w of W)w.top=w.el.offsetTop;
+}
+function objetivo(){
+  const i=Math.min(cursor,W.length-1);if(i<0)return 0;
+  const w=W[i];return w.top-guiaPx()+w.el.offsetHeight*.05;
+}
+function escenaDe(i){let k=0;for(let j=0;j<ESC.length;j++)if(ESC[j].i0<=i)k=j;return k}
+
+function moverA(n,silencioso){
+  n=Math.max(0,Math.min(W.length,n));
+  if(n===cursor)return;
+  const a=cursor<0?0:Math.min(cursor,n),b=Math.max(cursor<0?W.length:cursor,n);
+  for(let i=a;i<b&&i<W.length;i++)W[i].el.classList.toggle('leida',i<n);
+  if(cursor>=0&&cursor<W.length)W[cursor].el.classList.remove('actual');
+  if(n<W.length)W[n].el.classList.add('actual');
+  for(const p of PZ)p.classList.toggle('leida',n>0&&+p.dataset.p<=n);
+  const ea=cursor<0?-1:escenaDe(Math.min(cursor,W.length-1)),eb=escenaDe(Math.min(n,W.length-1));
+  // medición de duraciones: solo cuando se pasa a la escena siguiente leyendo
+  if(corriendo&&!silencioso){
+    if(n>=W.length&&entrada&&entrada.k===eb){registrar(eb)}
+    else if(eb===ea+1&&entrada&&entrada.k===ea){registrar(ea);entrada={k:eb,t:reloj}}
+    else if(eb!==ea){entrada={k:eb,t:reloj}}
+  }else if(eb!==ea)entrada=null;
+  cursor=n;acum=0;
+  const e=ESC[eb];$('lEscena').textContent=e?e.id+(e.blq?'':''):'—';
+  if(n>=W.length&&corriendo){detener();toast('Fin del libreto.')}
+}
+function registrar(k){const e=ESC[k];if(!e||!/^E/.test(e.id))return;medidas[e.id]=Math.round((reloj-entrada.t)*10)/10}
+
+/* bucle: desplazamiento suave + modo automático */
+function bucle(t){
+  if(!LIB)return;
+  const dt=ultimoT?Math.min(.1,(t-ultimoT)/1000):0;ultimoT=t;
+  if(corriendo){reloj+=dt;$('lReloj').textContent=mmss(reloj)}
+  if(corriendo&&CFG.modo==='auto'&&cursor<W.length){
+    const w=W[cursor];acum+=dt;
+    $('silencio').hidden=!(w.antes&&acum<1);
+    const base=60/CFG.ppm*Math.min(1.6,Math.max(.6,.5+w.len/10));
+    if(acum>=w.antes+base+w.desp)moverA(cursor+1);
+  }else $('silencio').hidden=true;
+  const sc=$('scroller');
+  if(seguir&&!tocando){const o=objetivo(),d=o-sc.scrollTop;if(Math.abs(d)>.5)sc.scrollTop+=d*Math.min(1,dt*7||1)}
+  requestAnimationFrame(bucle);
+}
+
+/* desplazamiento manual: al soltar, el lector continúa desde la palabra que quede en la línea guía */
+const sc=$('scroller');
+function empezarToque(){tocando=true;clearTimeout(tSoltar);if(corriendo&&CFG.modo==='auto')pausar()}
+function terminarToque(){clearTimeout(tSoltar);tSoltar=setTimeout(()=>{if(!tocando)return;tocando=false;anclar()},450)}
+sc.addEventListener('touchstart',empezarToque,{passive:true});
+sc.addEventListener('touchend',terminarToque,{passive:true});
+sc.addEventListener('wheel',()=>{empezarToque();terminarToque()},{passive:true});
+sc.addEventListener('scroll',()=>{if(tocando)terminarToque()},{passive:true});
+let movido=false;
+function anclar(){
+  const y=sc.scrollTop+guiaPx();let lo=0,hi=W.length-1,r=0;
+  while(lo<=hi){const m=(lo+hi)>>1;if(W[m].top+W[m].el.offsetHeight*.5<y){r=m+1;lo=m+1}else hi=m-1}
+  r=Math.min(r,W.length-1);
+  if(Math.abs(W[r].top-W[Math.min(cursor,W.length-1)].top)>4){moverA(r,true);movido=true}
+}
+$('texto').addEventListener('click',e=>{
+  const w=e.target.closest('.w');
+  if(w){moverA(+w.dataset.i,true);mostrarCtrl();return}
+  if(movido){movido=false;return}
+  alternar();
+});
+
+/* =================== Controles =================== */
+function etiquetaPlay(){
+  const b=$('bPlay');b.classList.toggle('escuchando',corriendo&&CFG.modo==='voz');
+  b.textContent=CFG.modo==='voz'?(corriendo?'Escuchando…':'Escuchar'):(corriendo?'Pausar':(cursor>0&&cursor<W.length?'Seguir':'Iniciar'));
+}
+let iCuenta=0;
+function iniciar(){
+  if(corriendo)return;
+  if(cursor>=W.length)moverA(0,true);
+  const ir=()=>{corriendo=true;entrada=null;ultimoT=0;acum=0;
+    const k=escenaDe(cursor);if(ESC[k]&&ESC[k].i0===cursor)entrada={k,t:reloj};
+    if(CFG.modo==='voz')escuchar();etiquetaPlay();mostrarCtrl()};
+  if(CFG.conteo){let n=3;const c=$('cuenta');c.textContent=n;c.hidden=false;clearInterval(iCuenta);
+    iCuenta=setInterval(()=>{n--;if(n>0)c.textContent=n;else{clearInterval(iCuenta);c.hidden=true;ir()}},800)}
+  else ir();
+}
+function pausar(){clearInterval(iCuenta);$('cuenta').hidden=true;corriendo=false;entrada=null;callar();etiquetaPlay();mostrarCtrl(true);guardarPos()}
+function detener(){pausar()}
+function alternar(){corriendo||!$('cuenta').hidden?pausar():iniciar()}
+function irEscena(d){
+  const k=escenaDe(Math.min(cursor,W.length-1));let dest=k+d;
+  if(d<0&&cursor>ESC[k].i0+2)dest=k;
+  dest=Math.max(0,Math.min(ESC.length-1,dest));moverA(ESC[dest].i0,true);
+  if(corriendo)entrada={k:dest,t:reloj};mostrarCtrl(!corriendo);
+}
+function ritmo(d){CFG.ppm=Math.max(80,Math.min(200,CFG.ppm+d));guardarCfg();aplicarCfg();mostrarCtrl(!corriendo)}
+function mostrarCtrl(fijo){
+  $('sup').classList.remove('oculto');$('inf').classList.remove('oculto');clearTimeout(tOcultar);
+  if(!fijo)tOcultar=setTimeout(()=>{if(corriendo&&$('hAjustes').hidden&&$('hEscenas').hidden){$('sup').classList.add('oculto');$('inf').classList.add('oculto')}},2600);
+}
+$('bPlay').onclick=alternar;$('bVolver').onclick=volver;
+$('bAnt').onclick=()=>irEscena(-1);$('bSig').onclick=()=>irEscena(1);
+$('bMenos').onclick=()=>ritmo(-6);$('bMas').onclick=()=>ritmo(6);
+$('bAjustes').onclick=()=>{$('hEscenas').hidden=true;$('hAjustes').hidden=!$('hAjustes').hidden;mostrarCtrl(true)};
+$('lEscena').onclick=()=>{$('hAjustes').hidden=true;pintarEscenas();$('hEscenas').hidden=false;mostrarCtrl(true)};
+$('vLec').addEventListener('pointermove',e=>{if(e.pointerType==='mouse')mostrarCtrl(!corriendo)});
+
+function pintarEscenas(){
+  const ul=$('lEscenas');ul.innerHTML='';let blq=null;const k=escenaDe(Math.min(cursor,W.length-1));
+  ESC.forEach((e,i)=>{
+    if(e.blq&&e.blq!==blq){blq=e.blq;const b=document.createElement('li');b.className='blq';b.textContent=e.blq;ul.appendChild(b)}
+    const li=document.createElement('li');if(i===k)li.className='aqui';
+    const med=medidas[e.id];
+    li.innerHTML=`<button type="button"><span class="id">${esc(e.id)}</span><span class="tx">${esc(e.frase)}</span><span class="du">~${Math.round(e.est)} s${med!=null?` · <b>${String(med).replace('.',',')} s</b>`:''}</span></button>`;
+    li.querySelector('button').onclick=()=>{moverA(e.i0,true);$('hEscenas').hidden=true;if(corriendo)entrada={k:i,t:reloj}};
+    ul.appendChild(li);
+  });
+  $('bCopiarDur').disabled=!Object.keys(medidas).length;
+}
+$('bCopiarDur').onclick=async()=>{
+  const ord={};ESC.forEach(e=>{if(medidas[e.id]!=null)ord[e.id]=medidas[e.id]});
+  const txt=JSON.stringify(ord,null,2);
+  try{await navigator.clipboard.writeText(txt);toast('duraciones.json copiado. Son tiempos de lectura; el ajuste fino se hace con el audio grabado.',4500)}
+  catch(e){toast('No se pudo copiar automáticamente.')}
+};
+
+document.addEventListener('keydown',e=>{
+  if($('vLec').hidden||e.target.matches('input,textarea'))return;
+  const k=e.key;
+  if(k===' '||k==='Enter'||k==='MediaPlayPause'){e.preventDefault();alternar()}
+  else if(k==='ArrowRight'||k==='PageDown'||k==='MediaTrackNext'){e.preventDefault();irEscena(1)}
+  else if(k==='ArrowLeft'||k==='PageUp'||k==='MediaTrackPrevious'){e.preventDefault();irEscena(-1)}
+  else if(k==='ArrowDown'){e.preventDefault();moverA(cursor+8,true)}
+  else if(k==='ArrowUp'){e.preventDefault();moverA(cursor-8,true)}
+  else if(k==='+'||k==='='){ritmo(6)}else if(k==='-'){ritmo(-6)}
+  else if(k==='Escape'){if(!$('hAjustes').hidden||!$('hEscenas').hidden){$('hAjustes').hidden=$('hEscenas').hidden=true}else volver()}
+});
+window.addEventListener('resize',()=>refrescarOffsets());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){if(corriendo)pausar();guardarPos()}else if(LIB)pedirLock()});
+
+async function pedirLock(){try{if('wakeLock' in navigator&&document.visibilityState==='visible')lockPant=await navigator.wakeLock.request('screen')}catch(e){}}
+function liberarLock(){try{lockPant&&lockPant.release()}catch(e){}lockPant=null}
+
+/* =================== Seguimiento por voz =================== */
+const CORTAS=new Set(['de','la','el','y','a','que','en','los','las','del','se','uno','es','por','con','lo','al','o','e','su','no','si','mi','tu','te','le','ya','nos','me','mas','pero','como']);
+function lev(a,b){const m=a.length,n=b.length;let p=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[n]}
+function igual(a,b){
+  if(a===b)return true;if(a.length<4||b.length<4)return false;
+  if(Math.abs(a.length-b.length)>2)return false;
+  return lev(a,b)<=(Math.max(a.length,b.length)>=7?2:1);
+}
+let fallos=[];
+function oir(r){
+  if(!r)return false;
+  const lim=CORTAS.has(r)?2:8;let j=Math.max(0,cursor),vistos=0;
+  while(j<W.length&&vistos<=lim){if(W[j].n){if(igual(W[j].n,r)){moverA(j+1);fallos=[];return true}vistos++}j++}
+  fallos.push(r);if(fallos.length>6)fallos.shift();
+  if(fallos.length>=3)recuperar();
+  return false;
+}
+/* si se saltó texto o repitió una frase, busca las últimas palabras oídas cerca del cursor */
+function recuperar(){
+  const seq=fallos.slice(-4).filter(x=>!CORTAS.has(x));if(seq.length<2)return;
+  let mejor=-1,dist=1e9;
+  for(let j=Math.max(0,cursor-60);j<Math.min(W.length,cursor+160);j++){
+    if(!W[j].n||!igual(W[j].n,seq[0]))continue;
+    let k=j,ok=true;
+    for(let s=1;s<seq.length;s++){let f=-1;for(let m=k+1;m<=k+4&&m<W.length;m++){if(W[m].n&&igual(W[m].n,seq[s])){f=m;break}}if(f<0){ok=false;break}k=f}
+    if(ok&&Math.abs(k-cursor)<dist){mejor=k;dist=Math.abs(k-cursor)}
+  }
+  if(mejor>=0){moverA(mejor+1,mejor+1<cursor);fallos=[]}
+}
+let REC=null,escuchando=false,hechos={};
+function escuchar(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast('Este navegador no reconoce voz. Use el modo automático.');pausar();return}
+  escuchando=true;fallos=[];
+  if(!REC){
+    REC=new SR();REC.lang='es-CO';REC.continuous=true;REC.interimResults=true;REC.maxAlternatives=1;
+    REC.onstart=()=>{hechos={}};
+    REC.onresult=e=>{
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const ws=e.results[i][0].transcript.split(/\s+/).map(norm).filter(Boolean);
+        const fin=e.results[i].isFinal,hasta=fin?ws.length:Math.max(hechos[i]||0,ws.length-1);
+        for(let k=hechos[i]||0;k<hasta;k++)oir(ws[k]);
+        hechos[i]=Math.max(hechos[i]||0,hasta);
+      }
+    };
+    REC.onerror=e=>{
+      if(e.error==='not-allowed'||e.error==='service-not-allowed'){toast('Permita el uso del micrófono para el modo voz.',5000);pausar()}
+      else if(e.error==='network'){toast('El modo voz necesita internet. Puede usar el modo automático.',5000);pausar()}
+      else if(e.error==='audio-capture'){toast('El micrófono está ocupado por otra app.',5000);pausar()}
+    };
+    REC.onend=()=>{if(escuchando)setTimeout(()=>{if(escuchando)try{REC.start()}catch(err){}},150)};
+  }
+  try{REC.start()}catch(err){}
+}
+function callar(){escuchando=false;try{REC&&REC.stop()}catch(e){}}
+
+/* =================== Archivos compartidos desde otras apps =================== */
+async function recibirCompartidos(){
+  if(!location.search.includes('compartido')||!('caches' in window))return;
+  history.replaceState(null,'',location.pathname);
+  try{
+    const c=await caches.open('compartidos'),k=new URL('__compartido',location.href).href,r=await c.match(k);
+    if(!r)return;const arr=await r.json();await c.delete(k);let ult=null;
+    for(const x of arr)if(x.texto&&x.texto.trim())ult=agregar(x.nombre||'compartido.md',x.texto);
+    if(ult)abrir(ult);
+  }catch(e){}
+}
+
+/* =================== Inicio =================== */
+aplicarCfg();pintarBib();recibirCompartidos();
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
